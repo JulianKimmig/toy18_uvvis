@@ -13,8 +13,9 @@ setup = dict(
     long_description_content_type="text/markdown",
     url="https://github.com/JulianKimmig/toy18_uvvis",
     include_package_data=True,
-    scripts=["toy18_uvvis"],
+    py_modules=["toy18_uvvis"],
     install_requires=required,
+    packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

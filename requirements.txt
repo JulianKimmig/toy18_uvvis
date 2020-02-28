@@ -1,3 +1,5 @@
 numpy
 pandas
 matplotlib
+data_recorder
+hardware_communicator
