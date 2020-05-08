@@ -21,10 +21,10 @@ class TOY18_UVVIS_Backend(SerialDevice):
     BANDWIDTH_MAX = 10
     CHECKTIME=4
 
-    def __init__(self, port=None, auto_port=False):
+    def __init__(self, port=None, auto_port=False,**kwargs):
 
         super().__init__(port=port, auto_port=auto_port, interpreter=StartKeyDataEndInterpreter("#", 10, []),
-                         background_sleep_time=0.1)
+                         background_sleep_time=0.1,**kwargs)
         self.measure_task = None
 
         for key, data in self.available_querys.items():
@@ -45,6 +45,7 @@ class TOY18_UVVIS_Backend(SerialDevice):
 
         self.add_connection_check(self.connection_check)
         self._full_report_callback = None
+
         self._receive_full_spectrum_callback = None
         self.last_hold_signal = time.time()
         self.register_background_task(self.hold_connection, minimum_call_delay=3)
@@ -143,7 +144,7 @@ class TOY18_UVVIS_Backend(SerialDevice):
             return False
 
     def turn_off(self):
-        self.stop_measurment()
+        self.stop_measurement()
         self.switch_lamp(False)
 
     def recive_status(self, raw, checksum):
@@ -253,6 +254,7 @@ class TOY18_UVVIS_Backend(SerialDevice):
     def request_full_report(self, callback=None):
         self._full_report_callback = callback
         self.write_to_port(self.interpreter.prepare_query("QST_DEVICE_REPORT"))
+        time.sleep(4)
 
     def get_full_report_callback(self):
         if self._full_report_callback:
@@ -371,7 +373,7 @@ class TOY18_UVVIS_Backend(SerialDevice):
         self.set_spectral_range(start_nm, end_nm, force=force_parameter)
         self.set_bandwidth(bandwidth, force=force_parameter)
         self.write_to_port(self.interpreter.prepare_query("QST_SCAN_ABSORBANCE"))
-        self._full_report_callback = callback
+        self._receive_full_spectrum_callback = callback
 
     def receive_full_spectrum(self, data):
         i1 = data.index(b":")
@@ -399,17 +401,17 @@ class TOY18_UVVIS_Backend(SerialDevice):
 
         x = np.arange(start=start, stop=end + 1)
         y = np.array(num_items)
-        if self._full_report_callback:
+        if self._receive_full_spectrum_callback:
             try:
-                self._full_report_callback(x, y)
+                self._receive_full_spectrum_callback(x, y)
             except:
                 pass
-        self._full_report_callback = None
+        self._receive_full_spectrum_callback = None
 
     def start_continuous_get_full_spectrum(
             self, delay=2, start_nm=0, end_nm=1200, bandwidth=4, callback=None
     ):
-        self.stop_measurment()
+        self.stop_measurement()
         self.get_full_spectrum(
             start_nm=start_nm, end_nm=end_nm, bandwidth=bandwidth, force_parameter=True
         )
@@ -425,7 +427,7 @@ class TOY18_UVVIS_Backend(SerialDevice):
             minimum_call_delay=delay,
         )
 
-    def stop_measurment(self):
+    def stop_measurement(self):
         if self.measure_task is not None:
             self.stop_task(self.measure_task)
 
@@ -924,7 +926,7 @@ class TOY18_UVVIS_Backend(SerialDevice):
             "receive_size": 4900,
             "max_receive_size": 5400,
             "receive_function": lambda target, value: target.get_full_report_callback()(
-                value
+                value.replace(";",";\n")
             ),
             "receive_dtype": str,
         },
@@ -936,6 +938,7 @@ plt_start = None
 
 x_data = None
 reg_data = []
+
 times = []
 
 
@@ -995,18 +998,18 @@ def main():
         time.sleep(2)
         t18.autozero()
         time.sleep(6)
-        t18.stop_measurment()
+        t18.stop_measurement()
         t18.stop()
 
         #recorder.min_nm = min(recorder.min_nm, *x)
-       # recorder.max_nm = max(recorder.max_nm, *x)
+        # recorder.max_nm = max(recorder.max_nm, *x)
         array = recorder.as_array(as_delta=True)
         wl = np.array([int(l.replace("nm_","")) for l in recorder.as_dataframe().columns[1:]])
         plt.imshow(
             array[1:],
             interpolation="nearest",
             aspect="auto",
-           extent=[array[0].min(), array[0].max(), wl.max(), wl.min()],
+            extent=[array[0].min(), array[0].max(), wl.max(), wl.min()],
         )
         plt.xlabel("time [s]")
         plt.ylabel("wavelength [nm]")
