@@ -19,12 +19,12 @@ class TOY18_UVVIS_Backend(SerialDevice):
     name = "TOY18_UVVIS"
     BANDWIDTH_MIN = 4
     BANDWIDTH_MAX = 10
-    CHECKTIME=4
+    CHECKTIME = 4
 
-    def __init__(self, port=None, auto_port=False,**kwargs):
+    def __init__(self, port=None, auto_port=False, **kwargs):
 
         super().__init__(port=port, auto_port=auto_port, interpreter=StartKeyDataEndInterpreter("#", 10, []),
-                         background_sleep_time=0.1,**kwargs)
+                         background_sleep_time=0.1, **kwargs)
         self.measure_task = None
 
         for key, data in self.available_querys.items():
@@ -56,14 +56,14 @@ class TOY18_UVVIS_Backend(SerialDevice):
 
     def verify_connection(self):
         t = time.time()
-        if t-self.last_hold_signal > 3:
+        if t - self.last_hold_signal > 3:
             time.sleep(3)
-            if t-self.last_hold_signal > 3:
+            if t - self.last_hold_signal > 3:
                 if self.connected:
-                    self.logger.error("lost connection to "+ str(self.port))
-                    self.connected=False
+                    self.logger.error("lost connection to " + str(self.port))
+                    self.connected = False
 
-    def recive_holding_signal(self,value):
+    def recive_holding_signal(self, value):
         self.last_hold_signal = time.time()
 
     def hold_connection(self):
@@ -90,17 +90,15 @@ class TOY18_UVVIS_Backend(SerialDevice):
         ):
             time.sleep(0.01)
 
-
         return all([self._checkflags[k] for k in keys])
 
     def set_check_and_property(self, value, checkflag, prop_name):
         put_device_property_receive_function(prop_name)(self, value)
         self._checkflags[checkflag] = True
 
-
-    def request_informations(self,timeout=5,blocking=True):
-        check_prop="LAMPS_STATE"
-        self.set_device_status(check_prop,None)
+    def request_informations(self, timeout=5, blocking=True):
+        check_prop = "LAMPS_STATE"
+        self.set_device_status(check_prop, None)
 
         for req in [
             "QST_DETECTOR_NAME",
@@ -117,11 +115,11 @@ class TOY18_UVVIS_Backend(SerialDevice):
             self.write_to_port(self.interpreter.prepare_query(req))
 
         def await_prop():
-            start_t=time.time()
-            t=start_t
-            while t-start_t < timeout and self.get_device_status(check_prop) is None:
+            start_t = time.time()
+            t = start_t
+            while t - start_t < timeout and self.get_device_status(check_prop) is None:
                 time.sleep(0.1)
-                t=time.time()
+                t = time.time()
 
             time.sleep(0.5)
             from pprint import pprint
@@ -130,7 +128,7 @@ class TOY18_UVVIS_Backend(SerialDevice):
         if blocking:
             await_prop()
         else:
-            threading.Thread(target=await_prop,daemon=True).start()
+            threading.Thread(target=await_prop, daemon=True).start()
 
     def validate_cs(self, byte_data, cs_hex_string):
         cs = int(cs_hex_string.decode(), 16)
@@ -244,6 +242,7 @@ class TOY18_UVVIS_Backend(SerialDevice):
             while ms_remaining > 0:
                 self.write_to_port(self.interpreter.prepare_query("CMD_BEEP", data="1"))
                 ms_remaining -= 2
+
         threading.Thread(target=beep_line).start()
 
     def switch_lamp(self, on):
@@ -926,12 +925,11 @@ class TOY18_UVVIS_Backend(SerialDevice):
             "receive_size": 4900,
             "max_receive_size": 5400,
             "receive_function": lambda target, value: target.get_full_report_callback()(
-                value.replace(";",";\n")
+                value.replace(";", ";\n")
             ),
             "receive_dtype": str,
         },
     }
-
 
 
 plt_start = None
@@ -981,11 +979,9 @@ def main():
     def recorder_recive_spec(x, y):
         recorder.data_point(**dict(zip([f"nm_{xi}" for xi in x], y)))
 
+    t18.find_port(excluded_ports=["/dev/ttyUSB0", "/dev/ttyUSB1"])
 
-    t18.find_port(excluded_ports=["COM1"])
-
-
-    print("CONFIG:",t18.config)
+    print("CONFIG:", t18.config)
     if t18.connected:
         # t18.request_full_report(lambda v:print(len(v),"\n",v.replace(";",";\n")))
 
@@ -994,32 +990,32 @@ def main():
 
         t18.start_continuous_get_full_spectrum(delay=1, callback=recorder_recive_spec)
 
-    def autostop():
-        time.sleep(2)
-        t18.autozero()
-        time.sleep(6)
-        t18.stop_measurement()
-        t18.stop()
+        def autostop():
+            time.sleep(2)
+            t18.autozero()
+            time.sleep(6)
+            t18.stop_measurement()
+            t18.stop()
 
-        #recorder.min_nm = min(recorder.min_nm, *x)
-        # recorder.max_nm = max(recorder.max_nm, *x)
-        array = recorder.as_array(as_delta=True)
-        wl = np.array([int(l.replace("nm_","")) for l in recorder.as_dataframe().columns[1:]])
-        plt.imshow(
-            array[1:],
-            interpolation="nearest",
-            aspect="auto",
-            extent=[array[0].min(), array[0].max(), wl.max(), wl.min()],
-        )
-        plt.xlabel("time [s]")
-        plt.ylabel("wavelength [nm]")
-        plt.colorbar()
-        plt.savefig("spec.png")
-        plt.close()
+            # recorder.min_nm = min(recorder.min_nm, *x)
+            # recorder.max_nm = max(recorder.max_nm, *x)
+            array = recorder.as_array(as_delta=True)
+            wl = np.array([int(l.replace("nm_", "")) for l in recorder.as_dataframe().columns[1:]])
+            plt.imshow(
+                array[1:],
+                interpolation="nearest",
+                aspect="auto",
+                extent=[array[0].min(), array[0].max(), wl.max(), wl.min()],
+            )
+            plt.xlabel("time [s]")
+            plt.ylabel("wavelength [nm]")
+            plt.colorbar()
+            plt.savefig("spec.png")
+            plt.close()
 
-        print("DONE")
+            print("DONE")
 
-    threading.Thread(target=autostop).start()
+        threading.Thread(target=autostop).start()
 
     while t18.has_running_tasks():
         time.sleep(1)
