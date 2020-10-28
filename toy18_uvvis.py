@@ -433,7 +433,7 @@ class TOY18_UVVIS_Backend(SerialDevice):
     def stop(self):
         self.stop_measurement()
         super().stop()
-        self.stop_read(permanently=True)
+        self.detatch()
 
     def __del__(self):
         self.stop()
