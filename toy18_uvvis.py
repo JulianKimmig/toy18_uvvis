@@ -430,6 +430,14 @@ class TOY18_UVVIS_Backend(SerialDevice):
         if self.measure_task is not None:
             self.stop_task(self.measure_task)
 
+    def stop(self):
+        self.stop_measurement()
+        super().stop()
+        self.stop_read(permanently=True)
+
+    def __del__(self):
+        self.stop()
+
     available_querys = {
         #    Queries for get basic information about the device
         "QST_DETECTOR_NAME": {
@@ -960,6 +968,7 @@ def print_spectra_callback(x, y):
     ax.set_zlabel("Z Label")
     plt.show(block=False)
     plt.close(fig)
+
 
 
 def main():
